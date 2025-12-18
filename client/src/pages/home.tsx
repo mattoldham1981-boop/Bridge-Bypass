@@ -3,9 +3,21 @@ import { MapView } from "@/components/map-view";
 import { Map, Menu, Settings, Bell, Search, LayoutDashboard, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
+import { getBridges } from "@/lib/api";
 import generatedImage from '@assets/generated_images/industrial_concrete_texture_with_yellow_caution_stripes.png';
 
 export default function Home() {
+  const { data: bridges = [] } = useQuery({
+    queryKey: ['bridges'],
+    queryFn: getBridges,
+  });
+  
+  const lowClearanceBridges = bridges
+    .filter(b => b.clearanceInches < 162)
+    .sort((a, b) => a.clearanceInches - b.clearanceInches)
+    .slice(0, 2);
+
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden font-sans text-foreground">
       
@@ -42,7 +54,6 @@ export default function Home() {
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Background Texture for non-map areas if we had them, mainly just adds subtle grain here if visible */}
         <div 
             className="absolute inset-0 opacity-5 pointer-events-none z-0"
             style={{ backgroundImage: `url(${generatedImage})`, backgroundSize: 'cover' }}
@@ -64,13 +75,13 @@ export default function Home() {
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col md:flex-row relative z-10">
             
-            {/* Vehicle Config Panel (Floating on Desktop, Bottom Sheet on Mobile) */}
+            {/* Vehicle Config Panel */}
             <div className="w-full md:w-[400px] p-4 md:p-6 flex flex-col gap-4 overflow-y-auto bg-background/95 md:bg-transparent border-b md:border-b-0 md:border-r border-border order-2 md:order-1 z-20 shadow-2xl">
                 <div className="md:hidden w-12 h-1 bg-muted rounded-full mx-auto mb-2" />
                 
                 <div className="mb-2">
                     <h2 className="text-2xl font-display font-bold text-white mb-1">ROUTE PLANNER</h2>
-                    <p className="text-muted-foreground text-sm">Optimized for 13' 6" clearance</p>
+                    <p className="text-muted-foreground text-sm">Optimized for safe clearance</p>
                 </div>
 
                 <VehicleForm />
@@ -78,27 +89,23 @@ export default function Home() {
                 <div className="bg-card/50 border border-border rounded-lg p-4 mt-4">
                     <h3 className="font-display font-bold text-sm text-muted-foreground mb-3 uppercase tracking-wider">Active Hazards Nearby</h3>
                     
-                    <div className="space-y-3">
-                        <div className="flex gap-3 items-start p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer group">
-                            <div className="h-8 w-8 rounded bg-destructive/20 text-destructive flex items-center justify-center shrink-0 mt-1">
-                                <AlertTriangle className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <div className="font-bold text-destructive group-hover:underline">Times Square Underpass</div>
-                                <div className="text-xs text-muted-foreground">Clearance: 11' 6" • 2.4 miles away</div>
-                            </div>
-                        </div>
-                        
-                        <div className="flex gap-3 items-start p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer group">
-                            <div className="h-8 w-8 rounded bg-destructive/20 text-destructive flex items-center justify-center shrink-0 mt-1">
-                                <AlertTriangle className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <div className="font-bold text-destructive group-hover:underline">Holland Tunnel Approach</div>
-                                <div className="text-xs text-muted-foreground">Clearance: 12' 8" • 4.1 miles away</div>
-                            </div>
-                        </div>
-                    </div>
+                    {lowClearanceBridges.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">Loading hazards...</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {lowClearanceBridges.map((bridge) => (
+                          <div key={bridge.id} className="flex gap-3 items-start p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer group">
+                              <div className="h-8 w-8 rounded bg-destructive/20 text-destructive flex items-center justify-center shrink-0 mt-1">
+                                  <AlertTriangle className="h-4 w-4" />
+                              </div>
+                              <div>
+                                  <div className="font-bold text-destructive group-hover:underline">{bridge.name}</div>
+                                  <div className="text-xs text-muted-foreground">Clearance: {bridge.clearanceHeight} • {bridge.city}, {bridge.state}</div>
+                              </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                 </div>
             </div>
 
@@ -106,7 +113,6 @@ export default function Home() {
             <div className="flex-1 relative order-1 md:order-2 min-h-[300px]">
                 <MapView />
                 
-                {/* Gradient overlay for smooth transition to sidebar */}
                 <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent pointer-events-none hidden md:block z-[400]" />
             </div>
 

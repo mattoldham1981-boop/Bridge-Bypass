@@ -60,6 +60,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const { seedBridges } = await import("./seed-bridges");
+  await seedBridges();
+  
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

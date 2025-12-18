@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import { AlertTriangle, Navigation, MapPin } from 'lucide-react';
+import { AlertTriangle, Navigation } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getBridges } from '@/lib/api';
 import L from 'leaflet';
 
 // Fix for default markers in React Leaflet
@@ -26,29 +28,12 @@ const lowBridgeIcon = new L.DivIcon({
   iconAnchor: [15, 15]
 });
 
-// Mock Data
-const LOW_BRIDGES = [
-  { id: 1, lat: 40.7128, lng: -74.0060, height: "12' 8\"", name: "Holland Tunnel Approach" },
-  { id: 2, lat: 40.7589, lng: -73.9851, height: "11' 6\"", name: "Times Square Underpass" },
-  { id: 3, lat: 40.8075, lng: -73.9626, height: "12' 0\"", name: "Riverside Drive Bridge" },
-  { id: 4, lat: 40.6782, lng: -73.9442, height: "12' 4\"", name: "Atlantic Ave Overpass" },
-];
-
-const ROUTE_POINTS: [number, number][] = [
-  [40.6892, -74.0445], // Statue of Liberty (Start approx)
-  [40.7127, -74.0134], // WTC
-  [40.7300, -74.0000], // Village
-  [40.7500, -73.9900], // Penn Station
-  [40.7580, -73.9855], // Times Square (Avoid!)
-  [40.7800, -73.9700], // Central Park
-];
-
 // Safe Route (Avoiding the low bridge at Times Square)
 const SAFE_ROUTE_POINTS: [number, number][] = [
   [40.6892, -74.0445],
   [40.7127, -74.0134],
-  [40.7350, -74.0200], // Detour West
-  [40.7600, -74.0100], // Detour West
+  [40.7350, -74.0200],
+  [40.7600, -74.0100],
   [40.7800, -73.9700],
 ];
 
@@ -62,6 +47,13 @@ function MapController({ center }: { center: [number, number] }) {
 
 export function MapView() {
   const [activeRoute, setActiveRoute] = useState<'direct' | 'safe'>('safe');
+  
+  const { data: bridges = [], isLoading } = useQuery({
+    queryKey: ['bridges'],
+    queryFn: getBridges,
+  });
+
+  const hazardCount = bridges.filter(b => b.clearanceInches < 162).length;
 
   return (
     <div className="h-full w-full relative group">
@@ -73,27 +65,25 @@ export function MapView() {
         
         <MapController center={[40.7328, -74.0060]} />
 
-        {/* Low Bridge Markers */}
-        {LOW_BRIDGES.map(bridge => (
-          <Marker key={bridge.id} position={[bridge.lat, bridge.lng]} icon={lowBridgeIcon}>
+        {/* Low Bridge Markers - Real Data from Database */}
+        {!isLoading && bridges.map(bridge => (
+          <Marker key={bridge.id} position={[bridge.latitude, bridge.longitude]} icon={lowBridgeIcon}>
             <Popup>
               <div className="p-2">
                 <div className="flex items-center gap-2 text-destructive font-bold mb-1">
                   <AlertTriangle size={16} />
                   LOW CLEARANCE
                 </div>
-                <div className="font-mono text-lg font-bold">{bridge.height}</div>
-                <div className="text-xs text-muted-foreground">{bridge.name}</div>
+                <div className="font-mono text-lg font-bold">{bridge.clearanceHeight}</div>
+                <div className="text-xs font-bold">{bridge.name}</div>
+                <div className="text-xs text-muted-foreground">{bridge.city}, {bridge.state}</div>
+                <div className="text-xs text-muted-foreground">{bridge.roadName}</div>
               </div>
             </Popup>
           </Marker>
         ))}
 
-        {/* Routes */}
-        {activeRoute === 'direct' && (
-           <Polyline positions={ROUTE_POINTS} pathOptions={{ color: "#ef4444", weight: 4, dashArray: "10, 10", opacity: 0.6 }} />
-        )}
-        
+        {/* Demo Route */}
         <Polyline positions={SAFE_ROUTE_POINTS} pathOptions={{ color: "#f97316", weight: 6 }} />
 
       </MapContainer>
@@ -107,26 +97,9 @@ export function MapView() {
                 <span>SAFE ROUTE ACTIVE</span>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-                Avoiding 2 low clearance hazards
+                Avoiding {hazardCount} low clearance hazards
             </div>
          </div>
-      </div>
-      
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000]">
-          <div className="flex gap-2 bg-card/90 backdrop-blur p-1 rounded-lg border border-border shadow-2xl">
-            <button 
-                onClick={() => setActiveRoute('safe')}
-                className={`px-4 py-2 rounded font-medium text-sm transition-colors ${activeRoute === 'safe' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
-            >
-                Safe Route
-            </button>
-            <button 
-                onClick={() => setActiveRoute('direct')}
-                className={`px-4 py-2 rounded font-medium text-sm transition-colors ${activeRoute === 'direct' ? 'bg-destructive text-destructive-foreground' : 'hover:bg-muted text-muted-foreground'}`}
-            >
-                Show Hazards
-            </button>
-          </div>
       </div>
     </div>
   );
