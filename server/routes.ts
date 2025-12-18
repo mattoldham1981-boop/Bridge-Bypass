@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { stripeService } from "./stripeService";
 import { insertBridgeSchema, insertVehicleProfileSchema, insertRouteSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -8,6 +9,103 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // Stripe payment routes
+  app.get("/api/products", async (req, res) => {
+    try {
+      const products = await storage.listProducts();
+      res.json({ data: products });
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  app.get("/api/products-with-prices", async (req, res) => {
+    try {
+      const rows = await storage.listProductsWithPrices();
+
+      const productsMap = new Map();
+      for (const row of rows) {
+        if (!productsMap.has(row.product_id)) {
+          productsMap.set(row.product_id, {
+            id: row.product_id,
+            name: row.product_name,
+            description: row.product_description,
+            active: row.product_active,
+            prices: []
+          });
+        }
+        if (row.price_id) {
+          productsMap.get(row.product_id).prices.push({
+            id: row.price_id,
+            unit_amount: row.unit_amount,
+            currency: row.currency,
+            recurring: row.recurring,
+            active: row.price_active,
+          });
+        }
+      }
+
+      res.json({ data: Array.from(productsMap.values()) });
+    } catch (error) {
+      console.error("Error fetching products with prices:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  app.get("/api/prices", async (req, res) => {
+    try {
+      const prices = await storage.listPrices();
+      res.json({ data: prices });
+    } catch (error) {
+      console.error("Error fetching prices:", error);
+      res.status(500).json({ error: "Failed to fetch prices" });
+    }
+  });
+
+  app.get("/api/products/:productId/prices", async (req, res) => {
+    try {
+      const { productId } = req.params;
+
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      const prices = await storage.getPricesForProduct(productId);
+      res.json({ data: prices });
+    } catch (error) {
+      console.error("Error fetching product prices:", error);
+      res.status(500).json({ error: "Failed to fetch prices" });
+    }
+  });
+
+  app.post("/api/checkout", async (req, res) => {
+    try {
+      const { priceId, email } = req.body;
+
+      if (!priceId || !email) {
+        return res.status(400).json({ error: "Missing priceId or email" });
+      }
+
+      let customerId = null;
+      const customer = await stripeService.createCustomer(email, "demo-user");
+      customerId = customer.id;
+
+      const session = await stripeService.createCheckoutSession(
+        customerId,
+        priceId,
+        `${req.protocol}://${req.get('host')}/checkout/success`,
+        `${req.protocol}://${req.get('host')}/checkout/cancel`
+      );
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
   
   app.get("/api/bridges", async (req, res) => {
     try {
