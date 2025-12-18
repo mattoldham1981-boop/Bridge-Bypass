@@ -5,11 +5,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import Pricing from "@/pages/pricing";
+import CheckoutSuccess from "@/pages/checkout-success";
+import CheckoutCancel from "@/pages/checkout-cancel";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/checkout/success" component={CheckoutSuccess} />
+      <Route path="/checkout/cancel" component={CheckoutCancel} />
       <Route component={NotFound} />
     </Switch>
   );

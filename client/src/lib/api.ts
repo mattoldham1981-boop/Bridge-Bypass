@@ -61,3 +61,36 @@ export async function createRoute(route: InsertRoute): Promise<Route> {
   if (!response.ok) throw new Error("Failed to create route");
   return response.json();
 }
+
+export interface Price {
+  id: string;
+  unit_amount: number;
+  currency: string;
+  recurring: { interval: string } | null;
+  active: boolean;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+  prices: Price[];
+}
+
+export async function getProductsWithPrices(): Promise<Product[]> {
+  const response = await fetch(`${API_BASE}/products-with-prices`);
+  if (!response.ok) throw new Error("Failed to fetch products");
+  const data = await response.json();
+  return data.data;
+}
+
+export async function createCheckoutSession(priceId: string, email: string): Promise<{ url: string }> {
+  const response = await fetch(`${API_BASE}/checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ priceId, email }),
+  });
+  if (!response.ok) throw new Error("Failed to create checkout session");
+  return response.json();
+}

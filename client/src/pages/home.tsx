@@ -1,10 +1,11 @@
 import { VehicleForm } from "@/components/vehicle-form";
 import { MapView } from "@/components/map-view";
-import { Map, Menu, Settings, Bell, Search, LayoutDashboard, AlertTriangle } from "lucide-react";
+import { Map, Menu, Settings, Bell, Search, LayoutDashboard, AlertTriangle, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { getBridges } from "@/lib/api";
+import { Link } from "wouter";
 import generatedImage from '@assets/generated_images/industrial_concrete_texture_with_yellow_caution_stripes.png';
 
 export default function Home() {
@@ -41,6 +42,12 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-4">
+            <Link href="/pricing">
+              <Button variant="outline" size="sm" className="text-primary border-primary hover:bg-primary hover:text-primary-foreground" data-testid="link-pricing">
+                <CreditCard className="h-4 w-4 mr-2" />
+                Upgrade
+              </Button>
+            </Link>
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
                 <Bell className="h-5 w-5" />
             </Button>
